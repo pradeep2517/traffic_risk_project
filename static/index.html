@@ -1,206 +1,404 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Traffic Accident Risk Detection - Control Center</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for breakdown graphs -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traffic Risk Control Center</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0fdf4', 500: '#22c55e', 600: '#16a34a' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom range slider styling */
+    input[type=range] { -webkit-appearance: none; background: transparent; }
+    input[type=range]:focus { outline: none; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%;
+      background: #38bdf8; cursor: pointer; box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      transition: all 0.15s ease-in-out; margin-top: -6px;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); background: #60a5fa; }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%; height: 8px; cursor: pointer; background: #334155; border-radius: 4px;
+    }
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 0.9; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.02); }
+    }
+    .score-glow { animation: pulse-subtle 3s infinite ease-in-out; }
+  </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen">
-    
-    <!-- Navbar -->
-    <nav class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-lg">
-        <div class="flex items-center space-x-3">
-            <span class="text-2xl">🚗</span>
-            <h1 class="text-xl font-bold tracking-wide">Smart Traffic Risk Control Center</h1>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-bold">
+        <i class="fa-solid fa-shield-halved text-xl"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg font-bold tracking-tight text-white">TRAFFIC RISK CONTROL CENTER</h1>
+          <span class="px-2 py-0.5 text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> LIVE TELEMETRY
+          </span>
         </div>
-        <span class="bg-emerald-500/20 text-emerald-400 text-xs px-3 py-1 rounded-full border border-emerald-500/30 font-semibold animate-pulse">● API Live (FastAPI)</span>
-    </nav>
+        <p class="text-xs text-slate-400">Autonomous Incident Mitigation & Dynamic Hazard Modeling</p>
+      </div>
+    </div>
 
-    <!-- Main Container -->
-    <main class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <!-- Left Column: Input Sliders -->
-        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl lg:col-span-1">
-            <h2 class="text-lg font-semibold mb-4 text-cyan-400 flex items-center gap-2">🎛️ Segment Parameters</h2>
+    <!-- Right Controls -->
+    <div class="flex items-center gap-4 text-sm">
+      <div class="hidden md:flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60">
+        <i class="fa-solid fa-server text-cyan-400 text-xs"></i>
+        <span class="text-xs text-slate-300 font-mono" id="server-status">API: <span class="text-emerald-400">ONLINE</span></span>
+      </div>
+      <div class="hidden lg:flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60">
+        <i class="fa-solid fa-satellite text-blue-400 text-xs"></i>
+        <span class="text-xs text-slate-300 font-mono" id="sector-id">Sector 7-B (North Corridor)</span>
+      </div>
+      <div class="text-right">
+        <div class="text-xs font-mono font-medium text-slate-200" id="current-time">00:00:00 UTC</div>
+        <div class="text-[10px] text-slate-500">Updated Real-Time</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: Parameter Input Sliders -->
+    <section class="lg:col-span-5 flex flex-col gap-6">
+      
+      <!-- Input Panel -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
+        <div class="absolute -top-12 -right-12 w-40 h-40 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div>
+          <div class="flex items-center justify-between pb-4 mb-5 border-b border-slate-800">
+            <div>
+              <h2 class="text-base font-semibold text-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-cyan-400"></i> Environmental Factors
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Simulate hazard conditions to forecast aggregate danger index</p>
+            </div>
+            <button id="btn-reset" class="text-xs text-slate-400 hover:text-cyan-400 flex items-center gap-1 transition-colors">
+              <i class="fa-solid fa-rotate-right text-[10px]"></i> Reset
+            </button>
+          </div>
+
+          <form id="risk-form" class="space-y-5">
             
-            <form id="predictionForm" class="space-y-4 text-sm">
-                <div>
-                    <label class="block font-medium mb-1">Speed Limit (km/h)</label>
-                    <input type="range" id="speed_limit" min="30" max="120" value="80" class="w-full accent-cyan-500" oninput="document.getElementById('sl_val').innerText = this.value">
-                    <span id="sl_val" class="text-xs text-slate-400">80</span>
+            <!-- 1. Speed Slider -->
+            <div class="space-y-1.5 bg-slate-800/40 p-3.5 rounded-xl border border-slate-800/80 hover:border-slate-700/60 transition-colors">
+              <div class="flex justify-between items-center text-sm">
+                <label class="font-medium text-slate-200 flex items-center gap-2">
+                  <span class="w-6 h-6 rounded bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs"><i class="fa-solid fa-gauge-high"></i></span>
+                  Average Speed
+                </label>
+                <div class="flex items-baseline gap-1 font-mono">
+                  <span id="val-speed" class="text-base font-bold text-cyan-400">45</span> <span class="text-xs text-slate-400">km/h</span>
                 </div>
-
-                <div>
-                    <label class="block font-medium mb-1">Average Speed (km/h)</label>
-                    <input type="range" id="average_speed" min="10" max="120" value="45" class="w-full accent-cyan-500" oninput="document.getElementById('as_val').innerText = this.value">
-                    <span id="as_val" class="text-xs text-slate-400">45</span>
-                </div>
-
-                <div>
-                    <label class="block font-medium mb-1">Traffic Congestion (0% - 100%)</label>
-                    <input type="range" id="congestion_level" min="0" max="1" step="0.05" value="0.75" class="w-full accent-cyan-500" oninput="document.getElementById('cg_val').innerText = Math.round(this.value * 100) + '%'">
-                    <span id="cg_val" class="text-xs text-slate-400">75%</span>
-                </div>
-
-                <div>
-                    <label class="block font-medium mb-1">Rainfall Intensity (mm)</label>
-                    <input type="range" id="rainfall_mm" min="0" max="100" value="25" class="w-full accent-cyan-500" oninput="document.getElementById('rf_val').innerText = this.value + ' mm'">
-                    <span id="rf_val" class="text-xs text-slate-400">25 mm</span>
-                </div>
-
-                <div>
-                    <label class="block font-medium mb-1">Visibility (meters)</label>
-                    <input type="range" id="visibility_m" min="20" max="5000" value="150" class="w-full accent-cyan-500" oninput="document.getElementById('vs_val').innerText = this.value + ' m'">
-                    <span id="vs_val" class="text-xs text-slate-400">150 m</span>
-                </div>
-
-                <div>
-                    <label class="block font-medium mb-1">Detected Potholes</label>
-                    <input type="range" id="pothole_count" min="0" max="30" value="5" class="w-full accent-cyan-500" oninput="document.getElementById('pt_val').innerText = this.value">
-                    <span id="pt_val" class="text-xs text-slate-400">5</span>
-                </div>
-
-                <div>
-                    <label class="block font-medium mb-1">Waterlogging Status</label>
-                    <select id="waterlogging" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200">
-                        <option value="0">No Waterlogging</option>
-                        <option value="1" selected>Yes (Waterlogged)</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block font-medium mb-1">Sudden Braking Events</label>
-                    <input type="range" id="sudden_braking_events" min="0" max="15" value="3" class="w-full accent-cyan-500" oninput="document.getElementById('sb_val').innerText = this.value">
-                    <span id="sb_val" class="text-xs text-slate-400">3</span>
-                </div>
-
-                <button type="button" onclick="calculateRisk()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition shadow-lg mt-4">
-                    🚀 Compute Live Risk Score
-                </button>
-            </form>
-        </div>
-
-        <!-- Right Column: Results & Analytics -->
-        <div class="space-y-6 lg:col-span-2">
-            
-            <!-- Risk Display Card -->
-            <div id="riskCard" class="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-xl flex flex-col items-center justify-center text-center transition-all duration-300">
-                <h3 class="text-slate-400 uppercase tracking-wider text-sm font-semibold mb-2">Computed Safety Risk Level</h3>
-                <div id="riskScoreDisplay" class="text-6xl font-black mb-2 text-cyan-400">-- / 100</div>
-                <div id="riskLevelBadge" class="px-4 py-1.5 rounded-full text-sm font-bold bg-slate-700 text-slate-300">Awaiting Prediction</div>
-                <p id="recommendationText" class="text-sm text-slate-400 mt-4 max-w-md">Adjust segment parameters on the left and click compute to generate real-time early warnings.</p>
+              </div>
+              <input id="slider-speed" type="range" min="10" max="120" value="45" class="w-full">
             </div>
 
-            <!-- Factor Breakdown Chart -->
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
-                <h3 class="text-lg font-semibold mb-4 text-cyan-400">📊 Risk Factor Contribution Breakdown</h3>
-                <div class="h-64 flex justify-center">
-                    <canvas id="breakdownChart"></canvas>
+            <!-- 2. Rain Slider -->
+            <div class="space-y-1.5 bg-slate-800/40 p-3.5 rounded-xl border border-slate-800/80 hover:border-slate-700/60 transition-colors">
+              <div class="flex justify-between items-center text-sm">
+                <label class="font-medium text-slate-200 flex items-center gap-2">
+                  <span class="w-6 h-6 rounded bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs"><i class="fa-solid fa-cloud-showers-heavy"></i></span>
+                  Precipitation (Rain)
+                </label>
+                <div class="flex items-baseline gap-1 font-mono">
+                  <span id="val-rain" class="text-base font-bold text-sky-400">20</span> <span class="text-xs text-slate-400">mm</span>
                 </div>
+              </div>
+              <input id="slider-rain" type="range" min="0" max="100" value="20" class="w-full">
             </div>
 
+            <!-- 3. Congestion Slider -->
+            <div class="space-y-1.5 bg-slate-800/40 p-3.5 rounded-xl border border-slate-800/80 hover:border-slate-700/60 transition-colors">
+              <div class="flex justify-between items-center text-sm">
+                <label class="font-medium text-slate-200 flex items-center gap-2">
+                  <span class="w-6 h-6 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs"><i class="fa-solid fa-car"></i></span>
+                  Traffic Congestion
+                </label>
+                <div class="flex items-baseline gap-1 font-mono">
+                  <span id="val-congestion" class="text-base font-bold text-amber-400">75</span> <span class="text-xs text-slate-400">%</span>
+                </div>
+              </div>
+              <input id="slider-congestion" type="range" min="0" max="100" value="75" class="w-full">
+            </div>
+
+            <!-- 4. Potholes Slider -->
+            <div class="space-y-1.5 bg-slate-800/40 p-3.5 rounded-xl border border-slate-800/80 hover:border-slate-700/60 transition-colors">
+              <div class="flex justify-between items-center text-sm">
+                <label class="font-medium text-slate-200 flex items-center gap-2">
+                  <span class="w-6 h-6 rounded bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs"><i class="fa-solid fa-road-circle-exclamation"></i></span>
+                  Detected Potholes
+                </label>
+                <div class="flex items-baseline gap-1 font-mono">
+                  <span id="val-potholes" class="text-base font-bold text-rose-400">5</span> <span class="text-xs text-slate-400">count</span>
+                </div>
+              </div>
+              <input id="slider-potholes" type="range" min="0" max="20" value="5" class="w-full">
+            </div>
+
+            <div class="pt-2">
+              <button type="button" id="btn-compute" class="w-full py-3.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all">
+                <i class="fa-solid fa-calculator text-sm"></i>
+                <span id="btn-text">COMPUTE RISK SCORE</span>
+                <span id="spinner" class="hidden animate-spin ml-2"><i class="fa-solid fa-circle-notch"></i></span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: Risk Score Display + Chart -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+
+      <!-- Prominent Risk Score Display Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div id="ambient-glow" class="absolute -top-24 -right-24 w-80 h-80 rounded-full blur-3xl opacity-20 bg-amber-500 transition-all duration-700 pointer-events-none"></div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-800 relative z-10">
+          
+          <div class="flex items-center gap-6">
+            <div class="relative flex items-center justify-center">
+              <svg class="w-32 h-32 transform -rotate-90">
+                <circle cx="64" cy="64" r="54" stroke="currentColor" stroke-width="10" class="text-slate-800" fill="transparent" />
+                <circle id="risk-circle-bar" cx="64" cy="64" r="54" stroke="currentColor" stroke-width="10" class="text-amber-500 transition-all duration-700 ease-out" fill="transparent" stroke-dasharray="339.29" stroke-dashoffset="190" stroke-linecap="round" />
+              </svg>
+              <div class="absolute flex flex-col items-center justify-center text-center">
+                <span id="risk-score-display" class="text-4xl font-extrabold text-white font-mono tracking-tight">--</span>
+                <span class="text-[10px] uppercase font-semibold text-slate-400">Score / 100</span>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xs uppercase font-semibold tracking-wider text-slate-400">Risk Assessment</span>
+                <span id="severity-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 inline-flex items-center gap-1.5 transition-all">
+                  <span id="severity-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                  <span id="severity-text">AWAITING DATA</span>
+                </span>
+              </div>
+              <h3 id="risk-headline" class="text-lg font-bold text-slate-100">System Ready</h3>
+              <p id="risk-description" class="text-xs text-slate-400 max-w-sm leading-relaxed">
+                Adjust parameters on the left and compute to evaluate real-time road conditions.
+              </p>
+            </div>
+          </div>
         </div>
 
-    </main>
+        <!-- Risk Factors Sub-indicators -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5 relative z-10 text-center">
+          <div class="bg-slate-800/40 border border-slate-800 rounded-lg p-2.5">
+            <span class="text-[10px] text-slate-400 block">ML Core Risk</span>
+            <span id="impact-ml" class="text-xs font-mono font-bold text-slate-200">-- pts</span>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-800 rounded-lg p-2.5">
+            <span class="text-[10px] text-slate-400 block">Weather Risk</span>
+            <span id="impact-weather" class="text-xs font-mono font-bold text-slate-200">-- pts</span>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-800 rounded-lg p-2.5">
+            <span class="text-[10px] text-slate-400 block">Traffic Risk</span>
+            <span id="impact-traffic" class="text-xs font-mono font-bold text-slate-200">-- pts</span>
+          </div>
+          <div class="bg-slate-800/40 border border-slate-800 rounded-lg p-2.5">
+            <span class="text-[10px] text-slate-400 block">Road Hazard</span>
+            <span id="impact-road" class="text-xs font-mono font-bold text-slate-200">-- pts</span>
+          </div>
+        </div>
+      </div>
 
-    <!-- JavaScript Logic to Connect with FastAPI -->
-    <script>
-        let myChart = null;
+      <!-- Chart.js Visualization Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex-1 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-chart-simple text-cyan-400"></i> Factor Breakdown
+          </h3>
+        </div>
+        <div class="relative w-full h-64">
+          <canvas id="riskBarChart"></canvas>
+        </div>
+      </div>
 
-        async function calculateRisk() {
-            const payload = {
-                speed_limit: parseFloat(document.getElementById('speed_limit').value),
-                average_speed: parseFloat(document.getElementById('average_speed').value),
-                congestion_level: parseFloat(document.getElementById('congestion_level').value),
-                rainfall_mm: parseFloat(document.getElementById('rainfall_mm').value),
-                visibility_m: parseFloat(document.getElementById('visibility_m').value),
-                pothole_count: parseInt(document.getElementById('pothole_count').value),
-                waterlogging: parseInt(document.getElementById('waterlogging').value),
-                sudden_braking_events: parseInt(document.getElementById('sudden_braking_events').value)
-            };
+    </section>
+  </main>
 
-            try {
-                const response = await fetch('http://127.0.0.1:8000/api/predict-risk', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+  <!-- REWRITTEN JAVASCRIPT LOGIC TO MATCH FASTAPI -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Clock
+      function updateTime() {
+        const timeEl = document.getElementById('current-time');
+        if (timeEl) timeEl.textContent = new Date().toTimeString().split(' ')[0] + ' UTC';
+      }
+      setInterval(updateTime, 1000); updateTime();
 
-                if (!response.ok) throw new Error('Failed to fetch prediction from FastAPI server.');
+      // 2. DOM Elements
+      const sliderSpeed = document.getElementById('slider-speed');
+      const sliderRain = document.getElementById('slider-rain');
+      const sliderCongestion = document.getElementById('slider-congestion');
+      const sliderPotholes = document.getElementById('slider-potholes');
+      const btnCompute = document.getElementById('btn-compute');
+      
+      const riskScoreDisplay = document.getElementById('risk-score-display');
+      const riskCircleBar = document.getElementById('risk-circle-bar');
+      const severityBadge = document.getElementById('severity-badge');
+      const severityDot = document.getElementById('severity-dot');
+      const severityText = document.getElementById('severity-text');
+      const ambientGlow = document.getElementById('ambient-glow');
+      const riskHeadline = document.getElementById('risk-headline');
+      const riskDescription = document.getElementById('risk-description');
 
-                const data = await response.json();
-                updateUI(data);
-            } catch (error) {
-                alert('Error connecting to FastAPI backend: ' + error.message + '\nMake sure your server is running via uvicorn!');
-            }
+      // 3. Sync Labels
+      function syncSliderLabels() {
+        document.getElementById('val-speed').textContent = sliderSpeed.value;
+        document.getElementById('val-rain').textContent = sliderRain.value;
+        document.getElementById('val-congestion').textContent = sliderCongestion.value;
+        document.getElementById('val-potholes').textContent = sliderPotholes.value;
+      }
+      [sliderSpeed, sliderRain, sliderCongestion, sliderPotholes].forEach(el => el.addEventListener('input', syncSliderLabels));
+
+      // 4. Initialize Chart.js with 5 backend variables
+      const ctx = document.getElementById('riskBarChart').getContext('2d');
+      const circumference = 2 * Math.PI * 54;
+      
+      const riskChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['ML Model Risk', 'Traffic Density', 'Weather Impact', 'Road Quality', 'Driver Behavior'],
+          datasets: [{
+            data: [0, 0, 0, 0, 0],
+            backgroundColor: ['#8b5cf6', '#fbbf24', '#38bdf8', '#f43f5e', '#10b981'],
+            borderRadius: 6,
+            barThickness: 30,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { max: 50, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+            x: { grid: { display: false }, ticks: { color: '#cbd5e1' } }
+          }
         }
+      });
 
-        function updateUI(data) {
-            const scoreDisplay = document.getElementById('riskScoreDisplay');
-            const badge = document.getElementById('riskLevelBadge');
-            const rec = document.getElementById('recommendationText');
-            const card = document.getElementById('riskCard');
+      // 5. Connect to FastAPI endpoint
+      btnCompute.addEventListener('click', async () => {
+        const btnText = document.getElementById('btn-text');
+        const spinner = document.getElementById('spinner');
+        btnCompute.disabled = true;
+        btnText.textContent = "COMPUTING...";
+        spinner.classList.remove('hidden');
 
-            scoreDisplay.innerText = data.risk_score + ' / 100';
-            badge.innerText = data.risk_level;
+        // Transform slider data into exact FastAPI Pydantic schema
+        const payload = {
+            speed_limit: 80, // Assumed constant for highway
+            average_speed: parseFloat(sliderSpeed.value),
+            congestion_level: parseFloat(sliderCongestion.value) / 100, // API wants 0.0 to 1.0
+            rainfall_mm: parseFloat(sliderRain.value),
+            visibility_m: Math.max(20, 1000 - (parseFloat(sliderRain.value) * 15)), // Calculate visibility based on rain
+            pothole_count: parseInt(sliderPotholes.value),
+            waterlogging: parseFloat(sliderRain.value) > 40 ? 1 : 0, // Waterlogged if heavy rain
+            sudden_braking_events: parseInt(sliderCongestion.value) > 60 ? 4 : 1
+        };
 
-            // Color coding badges & card borders
-            if (data.risk_score <= 25) {
-                badge.className = 'px-4 py-1.5 rounded-full text-sm font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-                card.className = 'bg-slate-800 p-8 rounded-2xl border border-emerald-500/50 shadow-xl flex flex-col items-center justify-center text-center';
-                rec.innerText = 'ℹ️ NORMAL CONDITIONS: Traffic flow is stable. Continue with standard caution.';
-            } else if (data.risk_score <= 50) {
-                badge.className = 'px-4 py-1.5 rounded-full text-sm font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30';
-                card.className = 'bg-slate-800 p-8 rounded-2xl border border-amber-500/50 shadow-xl flex flex-col items-center justify-center text-center';
-                rec.innerText = '⚠️ MODERATE ALERT: Minor congestion and road irregularities observed. Stay alert.';
-            } else if (data.risk_score <= 75) {
-                badge.className = 'px-4 py-1.5 rounded-full text-sm font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30';
-                card.className = 'bg-slate-800 p-8 rounded-2xl border border-orange-500/50 shadow-xl flex flex-col items-center justify-center text-center';
-                rec.innerText = '⚠️ HIGH RISK ALERT: Exercise caution. Wet road conditions and heavy congestion detected ahead.';
-            } else {
-                badge.className = 'px-4 py-1.5 rounded-full text-sm font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-bounce';
-                card.className = 'bg-slate-800 p-8 rounded-2xl border border-rose-500 shadow-xl flex flex-col items-center justify-center text-center';
-                rec.innerText = '🚨 CRITICAL WARNING: Reduce speed immediately to 40 km/h, maintain safe distance, and avoid lane changes.';
-            }
-
-            // Render Chart
-            renderChart(data.breakdown);
-        }
-
-        function renderChart(breakdown) {
-            const ctx = document.getElementById('breakdownChart').getContext('2d');
-            
-            const labels = Object.keys(breakdown);
-            const values = Object.values(breakdown);
-
-            if (myChart) myChart.destroy();
-
-            myChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['ML Risk', 'Traffic', 'Weather', 'Road Quality', 'Behavior'],
-                    datasets: [{
-                        label: 'Risk Factor Contribution',
-                        data: [breakdown.ml_risk, breakdown.traffic_risk, breakdown.weather_risk, breakdown.road_risk, breakdown.behavior_risk],
-                        backgroundColor: '#06b6d4',
-                        borderRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, max: 100, grid: { color: '#334155' } },
-                        x: { grid: { display: false } }
-                    },
-                    plugins: { legend: { display: false } }
-                }
+        try {
+            // EXACT URL to your Phase 14 Backend
+            const response = await fetch('http://127.0.0.1:8000/api/predict-risk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
+
+            if (!response.ok) throw new Error('API Error');
+            const data = await response.json();
+            
+            // 6. Apply data to DOM
+            const score = data.risk_score;
+            const b = data.breakdown;
+
+            // Score animation
+            riskScoreDisplay.innerHTML = score;
+            riskCircleBar.style.strokeDashoffset = circumference - (score / 100) * circumference;
+
+            // Update Chart
+            riskChart.data.datasets[0].data = [b.ml_risk, b.traffic_risk, b.weather_risk, b.road_risk, b.behavior_risk];
+            riskChart.update();
+
+            // Update Sub-indicators
+            document.getElementById('impact-ml').textContent = `+${b.ml_risk} pts`;
+            document.getElementById('impact-weather').textContent = `+${b.weather_risk} pts`;
+            document.getElementById('impact-traffic').textContent = `+${b.traffic_risk} pts`;
+            document.getElementById('impact-road').textContent = `+${b.road_risk} pts`;
+
+            // Color coding based on FastAPI's return level
+            if (score <= 25 || data.risk_level.includes("LOW")) {
+                severityBadge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1.5 transition-all";
+                severityDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                severityText.textContent = "LOW RISK";
+                riskCircleBar.setAttribute('class', 'text-emerald-500 transition-all duration-700 ease-out');
+                ambientGlow.className = "absolute -top-24 -right-24 w-80 h-80 rounded-full blur-3xl opacity-20 bg-emerald-500 transition-all duration-700 pointer-events-none";
+                riskHeadline.textContent = "Normal Traffic Conditions";
+                riskDescription.textContent = "Traffic flows efficiently. Weather and road integrity pose negligible disruption.";
+            } else if (score <= 50 || data.risk_level.includes("MODERATE")) {
+                severityBadge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1.5 transition-all";
+                severityDot.className = "w-2 h-2 rounded-full bg-amber-400";
+                severityText.textContent = "MODERATE RISK";
+                riskCircleBar.setAttribute('class', 'text-amber-500 transition-all duration-700 ease-out');
+                ambientGlow.className = "absolute -top-24 -right-24 w-80 h-80 rounded-full blur-3xl opacity-20 bg-amber-500 transition-all duration-700 pointer-events-none";
+                riskHeadline.textContent = "Elevated Hazard";
+                riskDescription.textContent = "Adverse conditions present. Maintain enhanced following distances.";
+            } else if (score <= 75 || data.risk_level.includes("HIGH")) {
+                severityBadge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-orange-500/25 text-orange-300 border border-orange-500/50 inline-flex items-center gap-1.5 transition-all";
+                severityDot.className = "w-2 h-2 rounded-full bg-orange-500";
+                severityText.textContent = "HIGH RISK ALERT";
+                riskCircleBar.setAttribute('class', 'text-orange-500 transition-all duration-700 ease-out');
+                ambientGlow.className = "absolute -top-24 -right-24 w-80 h-80 rounded-full blur-3xl opacity-25 bg-orange-600 transition-all duration-700 pointer-events-none";
+                riskHeadline.textContent = "Warning: Accident Probability High";
+                riskDescription.textContent = "Wet road conditions and heavy congestion detected. Reduce speed.";
+            } else {
+                severityBadge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/25 text-rose-300 border border-rose-500/50 inline-flex items-center gap-1.5 transition-all animate-pulse";
+                severityDot.className = "w-2 h-2 rounded-full bg-rose-500";
+                severityText.textContent = "CRITICAL DANGER";
+                riskCircleBar.setAttribute('class', 'text-rose-500 transition-all duration-700 ease-out');
+                ambientGlow.className = "absolute -top-24 -right-24 w-80 h-80 rounded-full blur-3xl opacity-25 bg-rose-600 transition-all duration-700 pointer-events-none";
+                riskHeadline.textContent = "Severe Accident Hazard Imminent";
+                riskDescription.textContent = "Immediate Speed Reduction required to 40 km/h. Avoid lane changes.";
+            }
+
+        } catch (error) {
+            alert("Could not connect to FastAPI server. Make sure it is running via: python -m uvicorn api.main:app --reload");
+        } finally {
+            btnCompute.disabled = false;
+            btnText.textContent = "COMPUTE RISK SCORE";
+            spinner.classList.add('hidden');
         }
-    </script>
+      });
+
+      syncSliderLabels();
+    });
+  </script>
 </body>
 </html>
