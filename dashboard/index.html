@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Traffic Accident Risk Detection - Control Center</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for breakdown graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen">
+    
+    <!-- Navbar -->
+    <nav class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center space-x-3">
+            <span class="text-2xl">🚗</span>
+            <h1 class="text-xl font-bold tracking-wide">Smart Traffic Risk Control Center</h1>
+        </div>
+        <span class="bg-emerald-500/20 text-emerald-400 text-xs px-3 py-1 rounded-full border border-emerald-500/30 font-semibold animate-pulse">● API Live (FastAPI)</span>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left Column: Input Sliders -->
+        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl lg:col-span-1">
+            <h2 class="text-lg font-semibold mb-4 text-cyan-400 flex items-center gap-2">🎛️ Segment Parameters</h2>
+            
+            <form id="predictionForm" class="space-y-4 text-sm">
+                <div>
+                    <label class="block font-medium mb-1">Speed Limit (km/h)</label>
+                    <input type="range" id="speed_limit" min="30" max="120" value="80" class="w-full accent-cyan-500" oninput="document.getElementById('sl_val').innerText = this.value">
+                    <span id="sl_val" class="text-xs text-slate-400">80</span>
+                </div>
+
+                <div>
+                    <label class="block font-medium mb-1">Average Speed (km/h)</label>
+                    <input type="range" id="average_speed" min="10" max="120" value="45" class="w-full accent-cyan-500" oninput="document.getElementById('as_val').innerText = this.value">
+                    <span id="as_val" class="text-xs text-slate-400">45</span>
+                </div>
+
+                <div>
+                    <label class="block font-medium mb-1">Traffic Congestion (0% - 100%)</label>
+                    <input type="range" id="congestion_level" min="0" max="1" step="0.05" value="0.75" class="w-full accent-cyan-500" oninput="document.getElementById('cg_val').innerText = Math.round(this.value * 100) + '%'">
+                    <span id="cg_val" class="text-xs text-slate-400">75%</span>
+                </div>
+
+                <div>
+                    <label class="block font-medium mb-1">Rainfall Intensity (mm)</label>
+                    <input type="range" id="rainfall_mm" min="0" max="100" value="25" class="w-full accent-cyan-500" oninput="document.getElementById('rf_val').innerText = this.value + ' mm'">
+                    <span id="rf_val" class="text-xs text-slate-400">25 mm</span>
+                </div>
+
+                <div>
+                    <label class="block font-medium mb-1">Visibility (meters)</label>
+                    <input type="range" id="visibility_m" min="20" max="5000" value="150" class="w-full accent-cyan-500" oninput="document.getElementById('vs_val').innerText = this.value + ' m'">
+                    <span id="vs_val" class="text-xs text-slate-400">150 m</span>
+                </div>
+
+                <div>
+                    <label class="block font-medium mb-1">Detected Potholes</label>
+                    <input type="range" id="pothole_count" min="0" max="30" value="5" class="w-full accent-cyan-500" oninput="document.getElementById('pt_val').innerText = this.value">
+                    <span id="pt_val" class="text-xs text-slate-400">5</span>
+                </div>
+
+                <div>
+                    <label class="block font-medium mb-1">Waterlogging Status</label>
+                    <select id="waterlogging" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200">
+                        <option value="0">No Waterlogging</option>
+                        <option value="1" selected>Yes (Waterlogged)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-medium mb-1">Sudden Braking Events</label>
+                    <input type="range" id="sudden_braking_events" min="0" max="15" value="3" class="w-full accent-cyan-500" oninput="document.getElementById('sb_val').innerText = this.value">
+                    <span id="sb_val" class="text-xs text-slate-400">3</span>
+                </div>
+
+                <button type="button" onclick="calculateRisk()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition shadow-lg mt-4">
+                    🚀 Compute Live Risk Score
+                </button>
+            </form>
+        </div>
+
+        <!-- Right Column: Results & Analytics -->
+        <div class="space-y-6 lg:col-span-2">
+            
+            <!-- Risk Display Card -->
+            <div id="riskCard" class="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-xl flex flex-col items-center justify-center text-center transition-all duration-300">
+                <h3 class="text-slate-400 uppercase tracking-wider text-sm font-semibold mb-2">Computed Safety Risk Level</h3>
+                <div id="riskScoreDisplay" class="text-6xl font-black mb-2 text-cyan-400">-- / 100</div>
+                <div id="riskLevelBadge" class="px-4 py-1.5 rounded-full text-sm font-bold bg-slate-700 text-slate-300">Awaiting Prediction</div>
+                <p id="recommendationText" class="text-sm text-slate-400 mt-4 max-w-md">Adjust segment parameters on the left and click compute to generate real-time early warnings.</p>
+            </div>
+
+            <!-- Factor Breakdown Chart -->
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+                <h3 class="text-lg font-semibold mb-4 text-cyan-400">📊 Risk Factor Contribution Breakdown</h3>
+                <div class="h-64 flex justify-center">
+                    <canvas id="breakdownChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- JavaScript Logic to Connect with FastAPI -->
+    <script>
+        let myChart = null;
+
+        async function calculateRisk() {
+            const payload = {
+                speed_limit: parseFloat(document.getElementById('speed_limit').value),
+                average_speed: parseFloat(document.getElementById('average_speed').value),
+                congestion_level: parseFloat(document.getElementById('congestion_level').value),
+                rainfall_mm: parseFloat(document.getElementById('rainfall_mm').value),
+                visibility_m: parseFloat(document.getElementById('visibility_m').value),
+                pothole_count: parseInt(document.getElementById('pothole_count').value),
+                waterlogging: parseInt(document.getElementById('waterlogging').value),
+                sudden_braking_events: parseInt(document.getElementById('sudden_braking_events').value)
+            };
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/predict-risk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch prediction from FastAPI server.');
+
+                const data = await response.json();
+                updateUI(data);
+            } catch (error) {
+                alert('Error connecting to FastAPI backend: ' + error.message + '\nMake sure your server is running via uvicorn!');
+            }
+        }
+
+        function updateUI(data) {
+            const scoreDisplay = document.getElementById('riskScoreDisplay');
+            const badge = document.getElementById('riskLevelBadge');
+            const rec = document.getElementById('recommendationText');
+            const card = document.getElementById('riskCard');
+
+            scoreDisplay.innerText = data.risk_score + ' / 100';
+            badge.innerText = data.risk_level;
+
+            // Color coding badges & card borders
+            if (data.risk_score <= 25) {
+                badge.className = 'px-4 py-1.5 rounded-full text-sm font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                card.className = 'bg-slate-800 p-8 rounded-2xl border border-emerald-500/50 shadow-xl flex flex-col items-center justify-center text-center';
+                rec.innerText = 'ℹ️ NORMAL CONDITIONS: Traffic flow is stable. Continue with standard caution.';
+            } else if (data.risk_score <= 50) {
+                badge.className = 'px-4 py-1.5 rounded-full text-sm font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                card.className = 'bg-slate-800 p-8 rounded-2xl border border-amber-500/50 shadow-xl flex flex-col items-center justify-center text-center';
+                rec.innerText = '⚠️ MODERATE ALERT: Minor congestion and road irregularities observed. Stay alert.';
+            } else if (data.risk_score <= 75) {
+                badge.className = 'px-4 py-1.5 rounded-full text-sm font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30';
+                card.className = 'bg-slate-800 p-8 rounded-2xl border border-orange-500/50 shadow-xl flex flex-col items-center justify-center text-center';
+                rec.innerText = '⚠️ HIGH RISK ALERT: Exercise caution. Wet road conditions and heavy congestion detected ahead.';
+            } else {
+                badge.className = 'px-4 py-1.5 rounded-full text-sm font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-bounce';
+                card.className = 'bg-slate-800 p-8 rounded-2xl border border-rose-500 shadow-xl flex flex-col items-center justify-center text-center';
+                rec.innerText = '🚨 CRITICAL WARNING: Reduce speed immediately to 40 km/h, maintain safe distance, and avoid lane changes.';
+            }
+
+            // Render Chart
+            renderChart(data.breakdown);
+        }
+
+        function renderChart(breakdown) {
+            const ctx = document.getElementById('breakdownChart').getContext('2d');
+            
+            const labels = Object.keys(breakdown);
+            const values = Object.values(breakdown);
+
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['ML Risk', 'Traffic', 'Weather', 'Road Quality', 'Behavior'],
+                    datasets: [{
+                        label: 'Risk Factor Contribution',
+                        data: [breakdown.ml_risk, breakdown.traffic_risk, breakdown.weather_risk, breakdown.road_risk, breakdown.behavior_risk],
+                        backgroundColor: '#06b6d4',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, grid: { color: '#334155' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
