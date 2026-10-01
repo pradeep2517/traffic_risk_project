@@ -1,6 +1,6 @@
-# Smart AI-Based Dynamic Traffic Accident Risk Detection
+# Smart  Dynamic Traffic Accident Risk Detection
 
-An end-to-end B.Tech final-year project that predicts traffic accident risks in real-time using machine learning, deployed as a REST API with a modern Tailwind CSS control dashboard.
+An end-to-end  that predicts traffic accident risks in real-time using machine learning, deployed as a REST API with a modern Tailwind CSS control dashboard.
 
 ## 🌟 Key Features
 - **Dynamic Risk Engine:** Calculates a 0-100 risk score based on weather, congestion, and road infrastructure.
